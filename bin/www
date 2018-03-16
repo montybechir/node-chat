@@ -1,0 +1,236 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('chat:server');
+var http = require('http');
+var socket = require('socket.io');
+//var moment = require('moment-timezone');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+var io = socket(server);
+
+var users = [];
+var messages = [];
+// fire up a callback function if we have made a connection
+io.on('connection', function(socket){ // this socket here is the socket of a particular person
+                                        // everyone has their own connection
+    console.log('made socket connection' + socket.id);
+    // check if this user has an existing cookie
+    let newUser;
+    socket.cookie = socket.handshake.headers.cookie || socket.request.headers.cookie;
+    console.log("socket.cookie:"+ socket.cookie);
+//    console.log("socket.cookie.nickname"+ socket.cookie.nickname);
+    let test = "1;"+ socket.cookie;
+    console.log("test:"+ test);
+    let testArr = []
+    testArr = test.split(";");
+    console.log("testArr:"+testArr);
+    console.log("testArr[0]" +testArr[0]);
+    console.log("testArr[1]" + testArr[1]);
+    console.log("testArr.length" + testArr.length)
+    let testArr2 = test.split(/[;= ]/);
+    //testArr2.split(";")
+    console.log("index of" + testArr.indexOf("nickname="));
+    console.log("testArr2.split"+testArr2);
+    console.log("index of" + testArr2.indexOf("nickname"));
+    let indexOfCookie = testArr2.indexOf("nickname");
+    if(indexOfCookie >= 0) {
+        console.log('The cookie nickname exists');
+        // set the nickname to the old nickname available
+        // check to see that another online user isn't using the same name
+        let indexOfNicknameInUsers = users.indexOf(testArr2[indexOfCookie+1]);
+        console.log("indexOfNicknameInUsers:"+indexOfNicknameInUsers );
+        if(indexOfNicknameInUsers >= 0){
+            //someone stole this user's nickname we have to generate them a random one
+            let randomNum = Math.floor(Math.random() * Math.floor(1000000));
+            newUser = 'user' + randomNum;
+        }
+        else{
+            newUser = testArr2[indexOfCookie+1];
+        }
+    }
+    else{
+        // give this user a random nickname
+        let randomNum = Math.floor(Math.random() * Math.floor(1000000));
+        newUser = 'user' + randomNum;
+        //res.cookie("chat", newUser);
+        //socket.nickName = newUser;
+    }
+    //let randomNum = Math.floor(Math.random()* Math.floor(1000000));
+    //let newUser = 'user' + randomNum;
+    socket.nickName = newUser;
+    socket.nickcolor = "000000"; // set the nickname color to black
+    users.push(newUser);
+    // send the current username's nickname to the client
+    socket.emit('updateUserName', {newUser: newUser});
+    // send out all the current connected users
+    io.sockets.emit('updateUsers', {users: users});
+    // send the existing messages to the new connected user if there are messages already
+    if(messages.length > 0) {
+        socket.emit('loadExistingMessages', {messages: messages});
+    }
+
+  //here we can listen for the message been sent to us from the client
+    // when we get a message take in the data being sent
+    socket.on('msg', function(data){
+        // now we want to send the data to all sockets connected to the server
+        //io.socket refers to all sockets connected to the server
+       // var currentTime = new Date();
+        console.log("messege should be sent");
+        console.log("socketId:" + socket.id);
+        data.timePosted = new Date();
+        data.nickName = socket.nickName;
+        data.nickcolor = socket.nickcolor;
+        //
+        // Push this message's data onto our array
+        //
+        messages.push(data);
+        console.log("\n messages is now \n");
+        for(i = 0; i < messages.length; i++){
+            console.log("\n"+  messages[i].timePosted + "\t" + messages[i].nickName + ":" + messages[i].message + "\t" + messages[i].nickcolor);
+        }
+        io.sockets.emit('msg', data) // send data to all sockets connected to our server
+    });
+
+    socket.on('disconnect', function(){
+       // remove the user that disconnected from the user list
+      console.log('user disconnected' + socket.nickName);
+      let indexOfNickName = users.indexOf(socket.nickName);
+      users.splice(indexOfNickName, 1);
+      io.sockets.emit('updateUsers', {users: users});
+    })
+
+
+    /******
+     *
+     * need to modify this so that it doesnt allow the username to change thier name to blank
+     *
+     * Need to change cookie's value here as well
+     */
+    socket.on('changeNickName', function(data){
+        console.log(data.msg);
+        let msg = data.msg;
+        words = msg.split(" "); // split the msg based on space
+        if(words.length != 2){
+            console.log('error: usage is /nick username');
+        }
+        else{
+            //check to see if the username they have entered is unique
+            console.log("word[0]" + words[0] + "word[1]:"+ words[1]+".")
+            let indexOfNickName = users.indexOf(words[1]);
+            if(indexOfNickName === -1){
+                //the current nickname wasn't found
+                // update this user's nickname to the new nickname
+                console.log('name does not exist');
+                users.splice(users.indexOf(socket.nickName),1); // remove the old nickname from the users lists
+                users.push(words[1]) // add new nickname to list of users
+                socket.nickName = words[1]; // set this client's nickname to the following
+                socket.emit('updateUserName', {newUser: words[1]});   // send the new nickname to the client
+                io.sockets.emit('updateUsers', {users:users})   // send the new users list to all the clients
+            }else{
+                // nickname is not unique
+                console.log("nickname already exists");
+            }
+        }
+    })
+
+    socket.on('changeNickColor', function(data){
+        //
+        let msgArr = data.message.split(" "); // split the message based on space
+        if(msgArr.length != 2){
+            console.log(" Error: usage is /nickcolor rrggbb")
+        }
+        else{
+            color = msgArr[1];
+            // set the nickcolor of this user to the hex value passed in
+            socket.nickcolor = color;
+            console.log("color to be changed to:" + color);
+        }
+
+    })
+
+});
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}

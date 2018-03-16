@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <style>
+      #chat-window {
+        border: solid 1px black;
+        width: 60em;
+        overflow-y: auto;
+        position: relative;
+        bottom: 0;
+        left: 0;
+        height: 20em;
+        vertical-align: bottom;
+      }
+
+      #output{
+        height: 30em;
+        bottom:0;
+        left:0;
+        vertical-align: bottom;
+        overflow-y:auto;
+        border: solid 2px black;
+        background-color: whitesmoke;
+        padding:2px;
+      }
+
+      #onlineUsers{
+        height: 30em;
+        border:solid 2px black;
+        bottom:0;
+        left:0;
+        vertical-align: bottom;
+        overflow-y: auto;
+        text-align: center;
+        background-color: whitesmoke;
+
+      }
+
+      #rowOne{
+        max-height:50em;
+      }
+
+      body{
+        background-color: darkgray;
+      }
+
+      #username{
+        color:whitesmoke;
+      }
+
+      #onlineUsersTxt{
+        color:whitesmoke;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-4"></div>
+        <div class="col-sm-2"><h1>CHAT!</h1></div>
+        <div class="col-sm-6"></div>
+      </div>
+      <div class="row" id="rowOne">
+        <div class="row">
+          <div class="col-md-10">
+          </div>
+          <div class="col-sm-2">
+          </div>
+        </div>
+        <div class="col-md-10">
+          <strong><p id="username"></p></strong>
+          <div id="output"></div>
+
+
+            <div class="input-group">
+              <input type="text" class="form-control" id="message" placeholder="Message">
+              <span class="input-group-btn">
+                <button id="send"class="btn btn-secondary" type="button">Go!</button>
+              </span>
+            </div>
+
+        </div>
+        <div class="col-sm-2">
+          <strong><p id="onlineUsersTxt">Online Users:</p></strong>
+          <div id="onlineUsers">
+
+            <div id="allOtherUsers"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+
+      </div>
+    </div>
+
+    <script src="javascripts/chat.js"></script>
+  </body>
+</html>
